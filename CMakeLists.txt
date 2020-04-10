@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.1)
 
 project(remoteaccessd)
+
+# Make sure we generate a compile command database for clang-tidy
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 file(GLOB SRC_LIST 
     ${PROJECT_SOURCE_DIR}/*.cpp
 )
