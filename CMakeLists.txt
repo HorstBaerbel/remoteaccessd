@@ -12,6 +12,7 @@ file(GLOB WAV_LIST
 # C++14
 # add_compile_options(-std=c++14) # does not work on macOS
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14")
+#set(CMAKE_CXX_CLANG_TIDY clang-tidy)
 
 # Make sure we build in release mode
 if (NOT CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")

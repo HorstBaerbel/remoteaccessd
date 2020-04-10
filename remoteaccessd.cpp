@@ -12,16 +12,16 @@
 
 #include "syshelpers.h"
 
-#include <fcntl.h>
-#include <unistd.h>
 #include <csignal>
-#include <poll.h>
+#include <fcntl.h>
 #include <linux/input.h>
+#include <poll.h>
+#include <unistd.h>
 
-#include <iostream>
-#include <string>
 #include <chrono>
 #include <cstdlib>
+#include <iostream>
+#include <string>
 #if defined(__GNUC__) || defined(__clang__)
 #include <experimental/filesystem>
 namespace stdfs = std::experimental::filesystem;
@@ -39,8 +39,7 @@ const std::string SERVICE_START_CMD = "systemctl start";
 const std::string SERVICE_STOP_CMD = "systemctl stop";
 const std::vector<std::string> SERVICES_TO_TOGGLE = {
     "ssh",
-    "dhcpcd"
-};
+    "dhcpcd"};
 constexpr std::chrono::milliseconds WIFI_TOGGLE_DURATION_MS(2000);
 constexpr std::chrono::milliseconds WPS_START_DURATION_MS(5000);
 constexpr std::chrono::milliseconds IGNORE_DURATION_MS(8000);
@@ -96,7 +95,7 @@ static bool toggleWiFiOverlay(const std::string &wifiDeviceName, bool enable)
         if (lineFound)
         {
             // line found, replace line
-            systemCommand("sed -i \"/#dtoverlay=disable-wifi/c\\dtoverlay=disable-wifi\" \"/boot/config.txt\"");
+            systemCommand(R"(sed -i "/#dtoverlay=disable-wifi/c\dtoverlay=disable-wifi" "/boot/config.txt")");
         }
         else
         {
@@ -114,7 +113,7 @@ static bool toggleWiFiOverlay(const std::string &wifiDeviceName, bool enable)
         if (lineFound)
         {
             // line found, replace line
-            systemCommand("sed -i \"/dtoverlay=disable-wifi/c\\#dtoverlay=disable-wifi\" /boot/config.txt");
+            systemCommand(R"(sed -i "/dtoverlay=disable-wifi/c\#dtoverlay=disable-wifi" /boot/config.txt)");
         }
         else
         {
@@ -220,67 +219,64 @@ static void startWPSConnection(bool useOverlay)
         actionInProgress = false;
         return;
     }
-    else
+    std::cout << "Starting WPS connection..." << std::endl;
+    // check if WPA config includes "update_config=1"
+    if (!systemCommand("grep -i \"update_config=1\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME))
     {
-        std::cout << "Starting WPS connection..." << std::endl;
-        // check if WPA config includes "update_config=1"
-        if (!systemCommand("grep -i \"update_config=1\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME))
+        // stop wpa_supplicant, update config and restart
+        systemCommand("killall -q wpa_supplicant");
+        sleep(1);
+        systemCommand("echo \"update_config=1\" >> " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME);
+        systemCommand("wpa_supplicant -B");
+        sleep(3);
+    }
+    // clear all stored networks from list
+    systemCommand("for i in \"wpa_cli -i" + wifiDeviceName + " list_networks | grep ^[0-9] | cut -f1\"; do wpa_cli -i" + wifiDeviceName + " remove_network $i; done");
+    // list all routers supporting WPS sorted by signal strength and extract first line
+    std::string scanResult;
+    if (systemCommand("wpa_cli -i" + wifiDeviceName + R"( scan_results | grep "WPS" | sort -r -k3 | sed -n "1p")", scanResult) && !scanResult.empty())
+    {
+        std::string bssid;
+        systemCommand("echo \" " + scanResult + R"( | sed -n "s/^\W*\([0-9a-fA-F:]\+\)\b.*/\1/p")", bssid);
+        std::string ssid;
+        systemCommand("echo \" " + scanResult + R"( | sed -n "s/.*\b\(\w\+\)\W*$/\1/p")", ssid);
+        if (!bssid.empty() && !ssid.empty())
         {
-            // stop wpa_supplicant, update config and restart
-            systemCommand("killall -q wpa_supplicant");
-            sleep(1);
-            systemCommand("echo \"update_config=1\" >> " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME);
-            systemCommand("wpa_supplicant -B");
-            sleep(3);
-        }
-        // clear all stored networks from list
-        systemCommand("for i in \"wpa_cli -i" + wifiDeviceName + " list_networks | grep ^[0-9] | cut -f1\"; do wpa_cli -i" + wifiDeviceName + " remove_network $i; done");
-        // list all routers supporting WPS sorted by signal strength and extract first line
-        std::string scanResult;
-        if (systemCommand("wpa_cli -i" + wifiDeviceName + " scan_results | grep \"WPS\" | sort -r -k3 | sed -n \"1p\"", scanResult) && !scanResult.empty())
-        {
-            std::string bssid;
-            systemCommand("echo \" " + scanResult + " | sed -n \"s/^\\W*\\([0-9a-fA-F:]\\+\\)\\b.*/\\1/p\"", bssid);
-            std::string ssid;
-            systemCommand("echo \" " + scanResult + " | sed -n \"s/.*\\b\\(\\w\\+\\)\\W*$/\\1/p\"", ssid);
-            if (!bssid.empty() && !ssid.empty())
+            // try to connect
+            std::cout << "Connecting to " << ssid << "(" << bssid << ")" << std::endl;
+            playWav("wps_started.wav");
+            if (systemCommand("wpa_cli -i" + wifiDeviceName + " wps_pbc " + bssid))
             {
-                // try to connect
-                std::cout << "Connecting to " << ssid << "(" << bssid << ")" << std::endl;
-                playWav("wps_started.wav");
-                if (systemCommand("wpa_cli -i" + wifiDeviceName + " wps_pbc " + bssid))
+                // connecting seemed to work, wait a bit and check .conf file
+                sleep(10);
+                const bool configHasNetwork = systemCommand("grep -i \"^network=\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME);
+                std::string configModifiedAgoS;
+                systemCommand(R"($(($(date +"%s") - $(stat -c "%Y" )" + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME + ")))", configModifiedAgoS);
+                if (configHasNetwork && !configModifiedAgoS.empty() && std::stoi(configModifiedAgoS) < 13)
                 {
-                    // connecting seemed to work, wait a bit and check .conf file
-                    sleep(10);
-                    const bool configHasNetwork = systemCommand("grep -i \"^network=\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME);
-                    std::string configModifiedAgoS;
-                    systemCommand("$(($(date +\"%s\") - $(stat -c \"%Y\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME + ")))", configModifiedAgoS);
-                    if (configHasNetwork && !configModifiedAgoS.empty() && std::stoi(configModifiedAgoS) < 13)
-                    {
-                        // stop wpa_supplicant, restart with new config
-                        /*systemCommand("killall -q wpa_supplicant");
+                    // stop wpa_supplicant, restart with new config
+                    /*systemCommand("killall -q wpa_supplicant");
                             sleep(1);
                             systemCommand("wpa_action " + wifiDeviceName + " stop");
                             systemCommand("wpa_action " + wifiDeviceName + " reload");
                             sleep(3);*/
-                        std::cout << "Connected to " << ssid << "(" << bssid << "). wpa_supplicant.conf updated" << std::endl;
-                        playWav("succeded.wav");
-                    }
-                }
-                else
-                {
-                    std::cerr << "Failed to connect to access point" << std::endl;
-                    playWav("failed.wav");
+                    std::cout << "Connected to " << ssid << "(" << bssid << "). wpa_supplicant.conf updated" << std::endl;
+                    playWav("succeded.wav");
                 }
             }
+            else
+            {
+                std::cerr << "Failed to connect to access point" << std::endl;
+                playWav("failed.wav");
+            }
         }
-        else
-        {
-            std::cerr << "Failed to find WPS-enabled WiFi access points" << std::endl;
-            playWav("failed.wav");
-        }
-        actionInProgress = false;
     }
+    else
+    {
+        std::cerr << "Failed to find WPS-enabled WiFi access points" << std::endl;
+        playWav("failed.wav");
+    }
+    actionInProgress = false;
 }
 
 static void copyConfigFile(const stdfs::path &filePath, const stdfs::path &destDir)
@@ -309,7 +305,7 @@ static void copyConfigFile(const stdfs::path &filePath, const stdfs::path &destD
             playWav("rebooting.wav");
             systemCommand("reboot");
         }
-        catch (stdfs::filesystem_error e)
+        catch (const stdfs::filesystem_error &e)
         {
             std::cout << "Copying failed: " << e.what() << std::endl;
             actionInProgress = false;
@@ -334,7 +330,7 @@ auto main(int argc, char *argv[]) -> int
 {
     int returnValue = 0;
     pollfd inputDevice = {0, 0, 0};
-    input_event events[64];
+    std::array<input_event, 64> events{};
     auto buttonPressStart = std::chrono::system_clock::now();
     bool dirExists = false;
     bool toggleWiFiByOverlay = true;
@@ -365,13 +361,13 @@ auto main(int argc, char *argv[]) -> int
             }
             else
             {
-                std::cerr << "Unknown WiFi toggle mode \"" << argv3 << "\". Use \"useIwconfig\" or \"useOverlay\"" << std::endl;
+                std::cerr << "Unknown WiFi toggle mode \"" << argv3 << R"(". Use "useIwconfig" or "useOverlay")" << std::endl;
                 return 2;
             }
         }
         // open input device for reading
         const std::string keyDevice = argv[1];
-        inputDevice.fd = open(keyDevice.c_str(), O_RDONLY | O_NONBLOCK);
+        inputDevice.fd = open(keyDevice.c_str(), O_RDONLY | O_NONBLOCK | O_CLOEXEC);
         if (inputDevice.fd < 0)
         {
             std::cerr << "Failed to open \"" << keyDevice << "\" for reading" << std::endl;
@@ -379,10 +375,10 @@ auto main(int argc, char *argv[]) -> int
         }
         std::cout << "Opened \"" << keyDevice << "\" for reading" << std::endl;
         // get input device name
-        char inputDeviceName[512] = "";
-        if (ioctl(inputDevice.fd, EVIOCGNAME(sizeof(inputDeviceName)), inputDeviceName) >= 0)
+        std::array<char, 512> inputDeviceName{};
+        if (ioctl(inputDevice.fd, EVIOCGNAME(sizeof(inputDeviceName)), inputDeviceName.data()) >= 0)
         {
-            std::cout << "Device name: \"" << inputDeviceName << "\"" << std::endl;
+            std::cout << "Device name: \"" << inputDeviceName.data() << "\"" << std::endl;
         }
         // check watch directory
         const std::string usbDirectory = argv[2];
@@ -397,7 +393,7 @@ auto main(int argc, char *argv[]) -> int
             auto result = poll(&inputDevice, 1, POLL_TIMEOUT_MS.count());
             if (result > 0)
             {
-                if (inputDevice.revents)
+                if (inputDevice.revents != 0)
                 {
                     const auto nrOfBytesRead = read(inputDevice.fd, &events, sizeof(events));
                     if (nrOfBytesRead < 0)
@@ -414,7 +410,7 @@ auto main(int argc, char *argv[]) -> int
                             ssize_t byteIndex = 0;
                             while (eventIndex < 64 && byteIndex < nrOfBytesRead)
                             {
-                                const auto & ev = events[eventIndex];
+                                const auto &ev = events[eventIndex];
                                 //eventToStdout(ev);
                                 if (ev.type == EV_KEY && ev.code == TOGGLE_KEYCODE)
                                 {
@@ -451,8 +447,8 @@ auto main(int argc, char *argv[]) -> int
             try
             {
                 // check if the directory is accessible
-                if (stdfs::exists(watchDir) && 
-                    stdfs::is_directory(watchDir) && 
+                if (stdfs::exists(watchDir) &&
+                    stdfs::is_directory(watchDir) &&
                     stdfs::directory_iterator(watchDir) != stdfs::directory_iterator())
                 {
                     // check if it was already accessible before
@@ -480,13 +476,13 @@ auto main(int argc, char *argv[]) -> int
                     dirExists = false;
                 }
             }
-            catch (stdfs::filesystem_error e)
+            catch (const stdfs::filesystem_error & /*e*/)
             {
                 dirExists = false;
             }
         }
     }
-    catch (std::runtime_error e)
+    catch (const std::runtime_error & /*e*/)
     {
         returnValue = 1;
     }

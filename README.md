@@ -40,6 +40,7 @@ The daemon will watch for a path to become available (use [usbmount](https://git
 
 * Clone repo using ```git clone https://github.com/HorstBaerbel/remoteaccessd```.
 * Navigate to the remoteaccessd folder, then run cmake: ```cmake .```
+* Then build using: ```make```
 
 ## Configuring
 

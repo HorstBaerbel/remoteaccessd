@@ -19,18 +19,18 @@ bool systemCommand(const std::string &cmd)
     {
         return std::system(cmd.c_str()) == 0;
     }
-    else
-    {
+    
+    
         std::cerr << "Command processor not available" << std::endl;
-    }
+    
     return false;
 }
 
-bool systemCommand(const std::string &cmd, std::string & result)
+bool systemCommand(const std::string &cmd, std::string &result)
 {
     if (std::system(nullptr) != 0)
     {
-        std::array<char, 128> buffer;
+        std::array<char, 128> buffer{};
         std::unique_ptr<FILE, decltype(&pclose)> pipe(popen(cmd.c_str(), "r"), pclose);
         if (pipe)
         {
@@ -49,7 +49,7 @@ bool systemCommand(const std::string &cmd, std::string & result)
     return false;
 }
 
-std::string firstGroupMatch(const std::string s, const std::string regex)
+std::string firstGroupMatch(const std::string &s, const std::string &regex)
 {
     try
     {
@@ -112,7 +112,7 @@ std::string getIPv4Address(const std::string &deviceName)
     std::string result;
     if (systemCommand("ip r | grep --color=never " + deviceName, result))
     {
-        return firstGroupMatch(result, deviceName + ".*\\blink.*\\b(([0-9]{1,3}\\.){3}[0-9]{1,3})");
+        return firstGroupMatch(result, deviceName + R"(.*\blink.*\b(([0-9]{1,3}\.){3}[0-9]{1,3}))");
     }
     return "";
 }

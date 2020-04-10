@@ -16,11 +16,11 @@ std::string extension(const std::string &path);
 /// @brief Run system command. Will return true if command was sucessfully run.
 bool systemCommand(const std::string &cmd);
 /// @brief Run system command an return result from stdout. Will return true if command was sucessfully run.
-bool systemCommand(const std::string &cmd, std::string & result);
+bool systemCommand(const std::string &cmd, std::string &result);
 
 /// @brief Search group in s using regular expression regex and return first group match (not the whole match).
 /// e.g. firstGroupMatch("blat.txt", "(\\w+)\\..*") -> "bla" which is the first group "(\\w+)".
-std::string firstGroupMatch(const std::string s, const std::string regex);
+std::string firstGroupMatch(const std::string &s, const std::string &regex);
 
 /// @brief Returns true if a WiFi device can be found in the system.
 bool isWiFiAvailable();
