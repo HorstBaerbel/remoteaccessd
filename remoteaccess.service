@@ -1,0 +1,10 @@
+[Unit]
+Description=Remote access GPIO button toggle deamon
+After=multi-user.target
+
+[Service]
+Type=idle
+ExecStart=/usr/local/bin/remoteaccessd /dev/input/event0 /media/usb
+
+[Install]
+WantedBy=multi-user.target
