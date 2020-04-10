@@ -1,0 +1,24 @@
+# Install and run clang-tidy
+name: clang-tidy
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+    - uses: actions/checkout@v2
+    - name: Install clang-tidy
+      run: apt install -y clang-tidy
+    - name: cmake
+      run: cmake .
+    - name: make
+      run: make
+    - name: Run clang-tidy
+      run: clang-tidy *.cpp
