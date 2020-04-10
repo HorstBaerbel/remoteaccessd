@@ -2,8 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![Build](https://github.com/HorstBaerbel/remoteaccessd/workflows/Build/badge.svg) ![Clang-tidy](https://github.com/HorstBaerbel/remoteaccessd/workflows/clang-tidy/badge.svg)
 
-This systemd service can toggle WiFi, SSH and DHCP on a Raspberry Pi from via GPIO button. Additionally it can connect to an access point using WPS by long-pressing that same button. It can also detect and copy new wpa_supplicant.conf files from an USB stick to the proper system directory to reconfigure the WPA encryption.  
-If you find a bug or make an improvement pull requests are appreciated.
+This systemd service can toggle WiFi, SSH and DHCP on a Raspberry Pi from via a [GPIO button](#how-to-add-a-gpio-button-to-your-system). Additionally it can connect to an access point using WPS by long-pressing that same button. It can also detect and copy new [wpa_supplicant.conf](#an-example-wpasupplicantconf-file) files from an USB stick to the proper system directory to reconfigure the WPA encryption.
+
+If you find a bug or make an improvement your pull requests are appreciated.
 
 # License
 
@@ -38,7 +39,7 @@ The daemon will watch for a path to become available (use [usbmount](https://git
 
 # Build, configure, install
 
-* Clone repo using ```git clone https://github.com/HorstBaerbel/remoteaccessd```.
+* Clone repo using ```git clone https://github.com/HorstBaerbel/remoteaccessd```
 * Navigate to the remoteaccessd folder, then run cmake: ```cmake .```
 * Then build using: ```make```
 
@@ -46,7 +47,7 @@ The daemon will watch for a path to become available (use [usbmount](https://git
 
 * Adjust the ```ExecStart=``` call in "remoteaccess.service" to your needs before installing. The command line options for the daemon are:
 
-1. GPIO button input device, e.g. "/dev/input/event0"
+1. [GPIO button input device](#how-to-add-a-gpio-button-to-your-system), e.g. "/dev/input/event0"
 2. Directory to watch for a "wpa_supplicant.conf" file, e.g. "/media/usb"
 3. Optionally a method to toggle WiFi. Pass either "useOverlay" (or nothing, option 1.) or "useIwconfig" (option 2.) to specify which method to use.  
 
