@@ -79,11 +79,9 @@ static void toggleWiFiIwconfig(const std::string &wifiDeviceName, bool enable)
 
 static bool toggleWiFiOverlay(const std::string &wifiDeviceName, bool enable)
 {
-    std::string lineContent;
-    const bool lineFound = systemCommand("grep -F --color=never \"dtoverlay=disable-wifi\" /boot/config.txt", lineContent);
+    const auto configLine = systemCommandStdout("grep -F --color=never \"dtoverlay=disable-wifi\" /boot/config.txt");
     // check if state is already what we want
-    if ((enable && ((!lineFound) || (lineFound && lineContent == "#dtoverlay=disable-wifi"))) ||
-        (!enable && lineFound && lineContent == "dtoverlay=disable-wifi"))
+    if ((enable && ((!configLine.first) || (configLine.first && configLine.second == "#dtoverlay=disable-wifi"))) || (!enable && configLine.first && configLine.second == "dtoverlay=disable-wifi"))
     {
         std::cout << "WiFi already " << (enable ? "on" : "off") << std::endl;
         return false;
@@ -92,7 +90,7 @@ static bool toggleWiFiOverlay(const std::string &wifiDeviceName, bool enable)
     if (enable)
     {
         playWav("wifi_on.wav");
-        if (lineFound)
+        if (configLine.first)
         {
             // line found, replace line
             systemCommand(R"(sed -i "/#dtoverlay=disable-wifi/c\dtoverlay=disable-wifi" "/boot/config.txt")");
@@ -110,7 +108,7 @@ static bool toggleWiFiOverlay(const std::string &wifiDeviceName, bool enable)
     {
         playWav("wifi_off.wav");
         systemCommand("iwconfig " + wifiDeviceName + " power on");
-        if (lineFound)
+        if (configLine.first)
         {
             // line found, replace line
             systemCommand(R"(sed -i "/dtoverlay=disable-wifi/c\#dtoverlay=disable-wifi" /boot/config.txt)");
@@ -233,26 +231,23 @@ static void startWPSConnection(bool useOverlay)
     // clear all stored networks from list
     systemCommand("for i in \"wpa_cli -i" + wifiDeviceName + " list_networks | grep ^[0-9] | cut -f1\"; do wpa_cli -i" + wifiDeviceName + " remove_network $i; done");
     // list all routers supporting WPS sorted by signal strength and extract first line
-    std::string scanResult;
-    if (systemCommand("wpa_cli -i" + wifiDeviceName + R"( scan_results | grep "WPS" | sort -r -k3 | sed -n "1p")", scanResult) && !scanResult.empty())
+    const auto scanResult = systemCommandStdout("wpa_cli -i" + wifiDeviceName + R"( scan_results | grep "WPS" | sort -r -k3 | sed -n "1p")");
+    if (scanResult.first && !scanResult.second.empty())
     {
-        std::string bssid;
-        systemCommand("echo \" " + scanResult + R"( | sed -n "s/^\W*\([0-9a-fA-F:]\+\)\b.*/\1/p")", bssid);
-        std::string ssid;
-        systemCommand("echo \" " + scanResult + R"( | sed -n "s/.*\b\(\w\+\)\W*$/\1/p")", ssid);
-        if (!bssid.empty() && !ssid.empty())
+        const auto bssid = systemCommandStdout("echo \" " + scanResult.second + R"( | sed -n "s/^\W*\([0-9a-fA-F:]\+\)\b.*/\1/p")");
+        const auto ssid = systemCommandStdout("echo \" " + scanResult.second + R"( | sed -n "s/.*\b\(\w\+\)\W*$/\1/p")");
+        if (!bssid.second.empty() && !ssid.second.empty())
         {
             // try to connect
-            std::cout << "Connecting to " << ssid << "(" << bssid << ")" << std::endl;
+            std::cout << "Connecting to " << ssid.second << "(" << bssid.second << ")" << std::endl;
             playWav("wps_started.wav");
-            if (systemCommand("wpa_cli -i" + wifiDeviceName + " wps_pbc " + bssid))
+            if (systemCommand("wpa_cli -i" + wifiDeviceName + " wps_pbc " + bssid.second))
             {
                 // connecting seemed to work, wait a bit and check .conf file
                 sleep(10);
                 const bool configHasNetwork = systemCommand("grep -i \"^network=\" " + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME);
-                std::string configModifiedAgoS;
-                systemCommand(R"($(($(date +"%s") - $(stat -c "%Y" )" + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME + ")))", configModifiedAgoS);
-                if (configHasNetwork && !configModifiedAgoS.empty() && std::stoi(configModifiedAgoS) < 13)
+                const auto configModifiedAgoS = systemCommandStdout(R"($(($(date +"%s") - $(stat -c "%Y" )" + WPA_CONFIG_DIRECTORY + WPA_CONFIG_FILENAME + ")))");
+                if (configHasNetwork && !configModifiedAgoS.second.empty() && std::stoi(configModifiedAgoS.second) < 13)
                 {
                     // stop wpa_supplicant, restart with new config
                     /*systemCommand("killall -q wpa_supplicant");
@@ -260,7 +255,7 @@ static void startWPSConnection(bool useOverlay)
                             systemCommand("wpa_action " + wifiDeviceName + " stop");
                             systemCommand("wpa_action " + wifiDeviceName + " reload");
                             sleep(3);*/
-                    std::cout << "Connected to " << ssid << "(" << bssid << "). wpa_supplicant.conf updated" << std::endl;
+                    std::cout << "Connected to " << ssid.second << "(" << bssid.second << "). wpa_supplicant.conf updated" << std::endl;
                     playWav("succeded.wav");
                 }
             }
@@ -447,9 +442,7 @@ auto main(int argc, char *argv[]) -> int
             try
             {
                 // check if the directory is accessible
-                if (stdfs::exists(watchDir) &&
-                    stdfs::is_directory(watchDir) &&
-                    stdfs::directory_iterator(watchDir) != stdfs::directory_iterator())
+                if (stdfs::exists(watchDir) && stdfs::is_directory(watchDir) && stdfs::directory_iterator(watchDir) != stdfs::directory_iterator())
                 {
                     // check if it was already accessible before
                     if (!dirExists)

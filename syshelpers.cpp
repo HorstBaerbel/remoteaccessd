@@ -19,15 +19,13 @@ bool systemCommand(const std::string &cmd)
     {
         return std::system(cmd.c_str()) == 0;
     }
-    
-    
-        std::cerr << "Command processor not available" << std::endl;
-    
+    std::cerr << "Command processor not available" << std::endl;
     return false;
 }
 
-bool systemCommand(const std::string &cmd, std::string &result)
+std::pair<bool, std::string> systemCommandStdout(const std::string &cmd)
 {
+    std::string result;
     if (std::system(nullptr) != 0)
     {
         std::array<char, 128> buffer{};
@@ -38,15 +36,14 @@ bool systemCommand(const std::string &cmd, std::string &result)
             {
                 result += buffer.data();
             }
-            return true;
+            return std::make_pair(true, result);
         }
     }
     else
     {
         std::cerr << "Command processor not available" << std::endl;
     }
-    result = "";
-    return false;
+    return std::make_pair(false, result);
 }
 
 std::string firstGroupMatch(const std::string &s, const std::string &regex)
@@ -76,11 +73,11 @@ bool isWiFiAvailable()
 std::string getWiFiDeviceName()
 {
     // check if there's a IEEE 802.xx device
-    std::string result;
-    if (systemCommand("iwconfig | grep --color=never \"IEEE 802\"", result))
+    const auto iwconfigResult = systemCommandStdout("iwconfig | grep --color=never \"IEEE 802\"");
+    if (iwconfigResult.first)
     {
         // extract the first portion of the string
-        return firstGroupMatch(result, "^\\W*(\\w+)");
+        return firstGroupMatch(iwconfigResult.second, "^\\W*(\\w+)");
     }
     return "";
 }
@@ -93,10 +90,10 @@ bool hasEthernetAddress(const std::string &deviceName)
 std::string getEthernetAddress(const std::string &deviceName)
 {
     // check if wifi has a hardware adress -> means it is on the APs network
-    std::string result;
-    if (systemCommand("ip link | grep --color=never -A 1 " + deviceName, result))
+    const auto ipLinkResult = systemCommandStdout("ip link | grep --color=never -A 1 " + deviceName);
+    if (ipLinkResult.first)
     {
-        return firstGroupMatch(result, deviceName + ".*\\W.*ether\\W*(([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})");
+        return firstGroupMatch(ipLinkResult.second, deviceName + ".*\\W.*ether\\W*(([0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2})");
     }
     return "";
 }
@@ -109,10 +106,10 @@ bool hasIPv4Address(const std::string &deviceName)
 std::string getIPv4Address(const std::string &deviceName)
 {
     // check if wifi has an IP adress -> means it is on the APs IP network
-    std::string result;
-    if (systemCommand("ip r | grep --color=never " + deviceName, result))
+    const auto ipRResult = systemCommandStdout("ip r | grep --color=never " + deviceName);
+    if (ipRResult.first)
     {
-        return firstGroupMatch(result, deviceName + R"(.*\blink.*\b(([0-9]{1,3}\.){3}[0-9]{1,3}))");
+        return firstGroupMatch(ipRResult.second, deviceName + R"(.*\blink.*\b(([0-9]{1,3}\.){3}[0-9]{1,3}))");
     }
     return "";
 }

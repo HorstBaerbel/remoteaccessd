@@ -22,4 +22,4 @@ jobs:
     - name: make
       run: make
     - name: Run clang-tidy
-      run: clang-tidy *.cpp
+      run: shopt -s globstar extglob failglob && ls **/*.@(h|H|hh|hpp|hxx|h++|c|C|cc|cpp|cxx|c++) | grep -v build | tr '\n' ' ' | xargs clang-tidy
