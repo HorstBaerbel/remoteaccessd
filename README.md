@@ -1,6 +1,6 @@
 # WiFi remote access and WPS daemon for Raspbian
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![Build](https://github.com/HorstBaerbel/remoteaccessd/workflows/Build/badge.svg) ![Clang-tidy](https://github.com/HorstBaerbel/remoteaccessd/workflows/clang-tidy/badge.svg)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) ![Build](https://github.com/HorstBaerbel/remoteaccessd/workflows/Build/badge.svg) ![Clang-format](https://github.com/HorstBaerbel/remoteaccessd/workflows/Clang-format/badge.svg) ![Clang-tidy](https://github.com/HorstBaerbel/remoteaccessd/workflows/clang-tidy/badge.svg)
 
 This systemd service can toggle WiFi, SSH and DHCP on a Raspberry Pi from via a [GPIO button](#how-to-add-a-gpio-button-to-your-system). Additionally it can connect to an access point using WPS by long-pressing that same button. It can also detect and copy new [wpa_supplicant.conf](#an-example-wpasupplicantconf-file) files from an USB stick to the proper system directory to reconfigure the WPA encryption.
 
