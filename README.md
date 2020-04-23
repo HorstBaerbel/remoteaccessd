@@ -6,13 +6,13 @@ This systemd service can toggle WiFi, SSH and DHCP on a Raspberry Pi from via a 
 
 If you find a bug or make an improvement your pull requests are appreciated.
 
-# License
+## License
 
 All of this is under the [MIT License](LICENSE).
 
-# Usage
+## Usage
 
-## Remote access toggle functionality
+### Remote access toggle functionality
 
 By default it waits for a 2-5s press of the F12 key from an input device to:
 
@@ -25,7 +25,7 @@ By default it waits for a 2-5s press of the F12 key from an input device to:
 
 With option 1. WiFi can be fully disabled. Option 2. only disables the device.
 
-## WPS connect functionality
+### WPS connect functionality
 
 By default it waits for a 5-8s press of the F12 key from an input device to:
 
@@ -33,17 +33,22 @@ By default it waits for a 5-8s press of the F12 key from an input device to:
 * Start looking for the strongest WiFi access point with WPS enabled and connect to that.
 * Store the configuration for that AP.
 
-## WPA configuration file copy functionality
+### WPA configuration file copy functionality
 
 The daemon will watch for a path to become available (use [usbmount](https://github.com/rbrito/usbmount) to mount USB sticks automatically) with a [wpa_supplicant.conf](wpa_supplicant.conf) [file](https://raspberrypi.stackexchange.com/questions/10251/prepare-sd-card-for-wifi-on-headless-pi) in its base directory every 3s. It will then copy that file to the proper location on the file system (/etc/wpa_supplicant/wpa_supplicant.conf) if it differs from the current configuration and reboot the system. This way you can get a headless RPi onto new networks really quickly without WPS.
 
-# Build, configure, install
+## Build, configure, install
 
 * Clone repo using ```git clone https://github.com/HorstBaerbel/remoteaccessd```
-* Navigate to the remoteaccessd folder, then run cmake: ```cmake .```
-* Then build using: ```make```
+* Navigate to the remoteaccessd folder, then:
 
-## Configuring
+```sh
+mkdir build && cd build
+cmake --config Release ..
+make -j$(nproc)
+```
+
+### Configuring
 
 * Adjust the ```ExecStart=``` call in "remoteaccess.service" to your needs before installing. The command line options for the daemon are:
 
@@ -53,15 +58,19 @@ The daemon will watch for a path to become available (use [usbmount](https://git
 
 The line should look something like this: ```ExecStart=/usr/local/bin/remoteaccessd /dev/input/event0 /media/usb useOverlay```
 
-## Installing
+### Installing
 
 * Run installation: ```sudo make install```
 
-The daemon should now run. You can check its state with: ```systemctl status remoteaccess```. The daemon starts relatively late in the boot process ("multi-user.target"), so it might take couple of seconds after bootup until button presses or config files are detected.
+The daemon should now run. You can check its state with: ```systemctl status remoteaccess```. The service starts relatively late in the boot process (after "basic.target"), so it might take couple of seconds after bootup until button presses or config files are detected.
 
-# Additional information
+### Uninstalling
 
-## How to add a GPIO button to your system
+* Run deinstallation: ```sudo make uninstall```
+
+## Additional information
+
+### How to add a GPIO button to your system
 
 * Connect a normally-open / "NO" button to your RPi
 * Add a button overlay to "/boot/config.txt": ```sudo nano /boot/config.txt``` and add:
@@ -73,7 +82,7 @@ dtoverlay=gpio-key,gpio=23,label="wifi-toggle",keycode=88
 
 This will create a GPIO button input device under /dev/input/eventX (connected to GPIO 23). You can find out what X is by running ```evtest```, selecting a device number and trying the button. You can read more about device overlays [here](https://github.com/raspberrypi/firmware/blob/master/boot/overlays/README) and about keycodes [here](https://github.com/torvalds/linux/blob/v4.12/include/uapi/linux/input-event-codes.h).
 
-## An example wpa_supplicant.conf file
+### An example wpa_supplicant.conf file
 
 ```sh
 ctrl_interface=DIR=/var/run/wpa_supplicant GROUP=netdev
