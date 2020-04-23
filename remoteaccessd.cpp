@@ -318,7 +318,7 @@ static void copyConfigFile(const stdfs::path &filePath, const stdfs::path &destD
 
 static void signalHandler(int signum)
 {
-    std::cout << "Signal received: " << signum << ". Quitting..."<< std::endl;
+    std::cout << "Signal received: " << signum << ". Quitting..." << std::endl;
     quit = true;
 }
 
