@@ -316,8 +316,9 @@ static void copyConfigFile(const stdfs::path &filePath, const stdfs::path &destD
     std::cout << ", value: " << ev.value << std::endl;
 }*/
 
-static void signalHandler(int /*signum*/)
+static void signalHandler(int signum)
 {
+    std::cout << "Signal received: " << signum << ". Quitting..."<< std::endl;
     quit = true;
 }
 
@@ -380,17 +381,28 @@ auto main(int argc, char *argv[]) -> int
         const auto watchDir = stdfs::path(usbDirectory);
         std::cout << "Watching directory \"" << usbDirectory << "\" for " << WPA_CONFIG_FILENAME << std::endl;
         // alright. ready to go. register signal handler so can quit when asked to
-        signal(SIGINT, signalHandler);
+        if (signal(SIGINT, signalHandler) == SIG_IGN)
+        {
+            signal(SIGINT, SIG_IGN);
+        }
+        if (signal(SIGHUP, signalHandler) == SIG_IGN)
+        {
+            signal(SIGHUP, SIG_IGN);
+        }
+        if (signal(SIGTERM, signalHandler) == SIG_IGN)
+        {
+            signal(SIGTERM, SIG_IGN);
+        }
         // run event loop
         while (!quit)
         {
             // poll input device for events
-            auto result = poll(&inputDevice, 1, POLL_TIMEOUT_MS.count());
-            if (result > 0)
+            inputDevice.events = POLLIN;
+            if (poll(&inputDevice, 1, POLL_TIMEOUT_MS.count()) > 0)
             {
                 if (inputDevice.revents != 0)
                 {
-                    const auto nrOfBytesRead = read(inputDevice.fd, &events, sizeof(events));
+                    const auto nrOfBytesRead = read(inputDevice.fd, events.data(), sizeof(events));
                     if (nrOfBytesRead < 0)
                     {
                         std::cerr << "Input device read failed: " << nrOfBytesRead << std::endl;
@@ -437,7 +449,7 @@ auto main(int argc, char *argv[]) -> int
                 {
                     std::cerr << "Error polling input device" << std::endl;
                 }
-            } // else a poll timeout occurred, so no events arrived
+            } // else an error or poll timeout occurred, so no events arrived
             // now check the directory for a wpa_supplicant.conf file
             try
             {
