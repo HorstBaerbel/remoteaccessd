@@ -28,7 +28,7 @@ namespace stdfs = std::experimental::filesystem;
 #endif
 
 #define PLAY_AUDIO // Uncomment this to play audio when access is toggled or a wpa config file is found etc.
-const std::string AUDIO_CMD = "aplay";
+const std::string AUDIO_CMD = "aplay --nonblock";
 const std::string DATA_PATH = "/usr/local/share/remoteaccessd/";
 const std::string WPA_CONFIG_FILENAME = "wpa_supplicant.conf";
 const std::string WPA_CONFIG_DIRECTORY = "/etc/wpa_supplicant/";

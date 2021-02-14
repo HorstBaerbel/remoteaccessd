@@ -54,9 +54,13 @@ make -j$(nproc)
 
 1. [GPIO button input device](#how-to-add-a-gpio-button-to-your-system), e.g. "/dev/input/event0"
 2. Directory to watch for a "wpa_supplicant.conf" file, e.g. "/media/usb"
-3. Optionally a method to toggle WiFi. Pass either "useOverlay" (or nothing, option 1.) or "useIwconfig" (option 2.) to specify which method to use.  
+3. Optionally a method to toggle WiFi. Pass either "useOverlay" or "useIwconfig" to specify which method to use.  
+   * ```useOverlay```: Modify the Raspberry Pi ```/boot/config.txt``` and add / remove ```dt-overlay=disable-wifi```. This is the default if you pass no option
+   * ```useIwconfig```: Use iwconfig to control the WiFi device
 
 The line should look something like this: ```ExecStart=/usr/local/bin/remoteaccessd /dev/input/event0 /media/usb useOverlay```
+
+By default the daemon plays audio via the ```aplay``` command (can be turned off). If you want to have multiple audio streams playing you will need to use the dmix plugin, otherwise the device is openend in exclusive mode and will block. See [here](https://alsa.opensrc.org/Dmix) how to set up ALSA to use dmix.
 
 ### Installing
 
